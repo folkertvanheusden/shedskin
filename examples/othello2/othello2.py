@@ -439,11 +439,11 @@ def vs_cpu_ugi(max_depth):
             segs = line.split()
             s = 1
             while s < len(segs):
-                if segs[s] == 'wtime':
+                if segs[s] == 'p2time':
                     if color == WHITE:
                         s += 1
                         use_time = float(segs[s]) / 1000 / n_moves_possible
-                elif segs[s] == 'btime':
+                elif segs[s] == 'p1time':
                     if color == BLACK:
                         s += 1
                         use_time = float(segs[s]) / 1000 / n_moves_possible
