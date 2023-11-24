@@ -18,6 +18,8 @@ based on the following implementations/tutorials:
 
 compiled with shedskin for a ~200-times speedup.
 
+Timemanagement etc by Folkert van Heusden.
+
 '''
 
 BLACK, WHITE = 0, 1
@@ -186,8 +188,8 @@ def minimax_ab(state, color, depth, max_depth, is_max_player, end_time, alpha=AL
     global NODES
     NODES += 1
 
-    if end_time != None and time.time() >= end_time:
-        return None
+    if time.time() >= end_time:
+        return -1000000000
 
     moves = possible_moves(state, color)
     opp_moves = possible_moves(state, color^1)
@@ -217,8 +219,8 @@ def minimax_ab(state, color, depth, max_depth, is_max_player, end_time, alpha=AL
 
                 val = minimax_ab(state, color ^ 1, depth+1, max_depth, False, end_time, alpha, beta)
 
-                if val == None:
-                    return None
+                if val == -1000000000:
+                    return val
 
                 state[0] = orig_black
                 state[1] = orig_white
@@ -239,8 +241,8 @@ def minimax_ab(state, color, depth, max_depth, is_max_player, end_time, alpha=AL
 
                 val = minimax_ab(state, color ^ 1, depth+1, max_depth, True, end_time, alpha, beta)
 
-                if val == None:
-                    return None
+                if val == -1000000000:
+                    return val
 
                 state[0] = orig_black
                 state[1] = orig_white
@@ -292,8 +294,8 @@ def vs_cpu_cli(max_depth):
         else:
             print('(thinking)')
             t0 = time.time()
-            move = minimax_ab(state, color, 0, max_depth, True, None)
-            if move == None:
+            move = minimax_ab(state, color, 0, max_depth, True, t0 + 1000000)
+            if move == -1000000000:
                 break
             t1 = (time.time()-t0)
             print('%d nodes in %.2fs seconds (%.2f/second)' % (NODES, t1, NODES/t1))
@@ -338,8 +340,8 @@ def vs_cpu_nboard(max_depth):
                 sys.stdout.write('=== PASS\n')
                 color = color^1
             else:
-                move = minimax_ab(state, color, 0, max_depth, True, None)
-                if move == None:
+                move = minimax_ab(state, color, 0, max_depth, True, time.time() + 1000000)
+                if move == -1000000000:
                     break
                 sys.stdout.write('=== %s\n' % human_move(move).upper())
 
@@ -387,7 +389,7 @@ def vs_cpu_ugi(max_depth):
         line = line.strip()
 
         if line == 'ugi':
-            sys.stdout.write('id name Othello2\n')
+            sys.stdout.write('id name Poppie\n')
             sys.stdout.write('id author Mark Dufour and others\n')
             sys.stdout.write('ugiok\n')
 
@@ -453,15 +455,15 @@ def vs_cpu_ugi(max_depth):
 
             end_time = time.time() + use_time
             max_depth = 1
-            move = None
+            move = -1000000000
             while True:
                 cur_move = minimax_ab(state, color, 0, max_depth, True, end_time)
-                if cur_move == None:
+                if cur_move == -1000000000:
                     break
                 move = cur_move
                 max_depth += 1
 
-            if move == None:
+            if move == -1000000000:
                 sys.stdout.write('bestmove 0000\n')
             else:
                 sys.stdout.write('bestmove %s\n' % human_move(move))
