@@ -182,9 +182,12 @@ def evaluate(state, color, is_max_player, my_moves, opp_moves):
         return -value
 
 
-def minimax_ab(state, color, depth, max_depth, is_max_player, alpha=ALPHA_MIN, beta=BETA_MAX):
+def minimax_ab(state, color, depth, max_depth, is_max_player, end_time, alpha=ALPHA_MIN, beta=BETA_MAX):
     global NODES
     NODES += 1
+
+    if end_time != None and time.time() >= end_time:
+        return None
 
     moves = possible_moves(state, color)
     opp_moves = possible_moves(state, color^1)
@@ -212,7 +215,10 @@ def minimax_ab(state, color, depth, max_depth, is_max_player, alpha=ALPHA_MIN, b
             if moves & (1 << move):
                 do_move(state, color, move)
 
-                val = minimax_ab(state, color ^ 1, depth+1, max_depth, False, alpha, beta)
+                val = minimax_ab(state, color ^ 1, depth+1, max_depth, False, end_time, alpha, beta)
+
+                if val == None:
+                    return None
 
                 state[0] = orig_black
                 state[1] = orig_white
@@ -231,7 +237,10 @@ def minimax_ab(state, color, depth, max_depth, is_max_player, alpha=ALPHA_MIN, b
             if moves & (1 << move):
                 do_move(state, color, move)
 
-                val = minimax_ab(state, color ^ 1, depth+1, max_depth, True, alpha, beta)
+                val = minimax_ab(state, color ^ 1, depth+1, max_depth, True, end_time, alpha, beta)
+
+                if val == None:
+                    return None
 
                 state[0] = orig_black
                 state[1] = orig_white
@@ -283,7 +292,9 @@ def vs_cpu_cli(max_depth):
         else:
             print('(thinking)')
             t0 = time.time()
-            move = minimax_ab(state, color, 0, max_depth, True)
+            move = minimax_ab(state, color, 0, max_depth, True, None)
+            if move == None:
+                break
             t1 = (time.time()-t0)
             print('%d nodes in %.2fs seconds (%.2f/second)' % (NODES, t1, NODES/t1))
 
@@ -327,7 +338,9 @@ def vs_cpu_nboard(max_depth):
                 sys.stdout.write('=== PASS\n')
                 color = color^1
             else:
-                move = minimax_ab(state, color, 0, max_depth, True)
+                move = minimax_ab(state, color, 0, max_depth, True, None)
+                if move == None:
+                    break
                 sys.stdout.write('=== %s\n' % human_move(move).upper())
 
         elif line.startswith('ping '):
@@ -366,11 +379,20 @@ def vs_cpu_ugi(max_depth):
     global NODES
     NODES = 0
 
+    board = empty_board()
+    state = parse_state(board)
+    color = BLACK
+
     for line in sys.stdin:
         line = line.strip()
 
         if line == 'ugi':
+            sys.stdout.write('id name Othello2\n')
+            sys.stdout.write('id author Mark Dufour and others\n')
             sys.stdout.write('ugiok\n')
+
+        elif line == 'quit':
+            break
 
         elif line == 'isready':
             sys.stdout.write('readyok\n')
@@ -405,14 +427,49 @@ def vs_cpu_ugi(max_depth):
                 sys.stdout.write('response false\n')
 
         elif line.startswith('go '):
-            move = minimax_ab(state, color, 0, max_depth, True)
-            sys.stdout.write('bestmove %s\n' % human_move(move))
+            use_time = 1.
 
-        elif line.startswith('position'):
+            moves = possible_moves(state, color)
+            n_moves_possible = 0
+            for i in range(0, 64):
+                n_moves_possible += 1 if (moves & (1 << i)) else 0
+
+            segs = line.split()
+            s = 1
+            while s < len(segs):
+                if segs[s] == 'wtime':
+                    if color == WHITE:
+                        s += 1
+                        use_time = float(segs[s]) / 1000 / n_moves_possible
+                elif segs[s] == 'btime':
+                    if color == BLACK:
+                        s += 1
+                        use_time = float(segs[s]) / 1000 / n_moves_possible
+                elif segs[s] == 'movetime':
+                    s += 1
+                    use_time = float(segs[s]) / 1000
+
+                s += 1
+
+            end_time = time.time() + use_time
+            max_depth = 1
+            move = None
+            while True:
+                cur_move = minimax_ab(state, color, 0, max_depth, True, end_time)
+                if cur_move == None:
+                    break
+                move = cur_move
+                max_depth += 1
+
+            if move == None:
+                sys.stdout.write('bestmove 0000\n')
+            else:
+                sys.stdout.write('bestmove %s\n' % human_move(move))
+
+        elif line.startswith('position '):
             segs = line.split()
 
             s = 1
-
             while s < len(segs):
                 if segs[s] == 'fen':
                     s += 1
@@ -458,7 +515,7 @@ def speed_test():
     color = BLACK
 
     t0 = time.time()
-    move = minimax_ab(state, color, 0, 12, True)
+    move = minimax_ab(state, color, 0, 14, True, time.time() + 5.)
     t1 = (time.time()-t0)
     print('%d nodes in %.2fs seconds (%.2f/second)' % (NODES, t1, NODES/t1))
 
