@@ -431,25 +431,21 @@ def vs_cpu_ugi(max_depth):
         elif line.startswith('go '):
             use_time = 1.
 
-            moves = possible_moves(state, color)
             n_moves_possible = 0
+            in_use = ~(state[0] | state[1])
             for i in range(0, 64):
-                n_moves_possible += 1 if (moves & (1 << i)) else 0
+                if in_use & (1 << i):
+                    n_moves_possible += 1
 
             segs = line.split()
             s = 1
             while s < len(segs):
-                if segs[s] == 'p2time':
-                    if color == WHITE:
-                        s += 1
-                        use_time = float(segs[s]) / 1000 / n_moves_possible
-                elif segs[s] == 'p1time':
-                    if color == BLACK:
-                        s += 1
-                        use_time = float(segs[s]) / 1000 / n_moves_possible
+                if segs[s] == 'p1time':
+                    s += 1
+                    use_time = float(segs[s]) * 0.85 / 1000 / n_moves_possible
                 elif segs[s] == 'movetime':
                     s += 1
-                    use_time = float(segs[s]) / 1000
+                    use_time = float(segs[s]) * 0.95 / 1000
 
                 s += 1
 
@@ -496,11 +492,10 @@ def vs_cpu_ugi(max_depth):
 
                 elif segs[s] == 'moves':
                     for hmove in segs[s + 1:]:
-                        if hmove != 'moves':
+                        if hmove != '0000':
                             do_move(state, color, parse_move(hmove.lower()))
 
-                            if possible_moves(state, color^1) != 0:
-                                color = color^1
+                        color = color^1
                     break
 
                 s += 1
